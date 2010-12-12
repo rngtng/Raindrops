@@ -2,14 +2,18 @@
  * Raindrops - Server.pde
  * upload this on the Arduino connected to the Accelerometer
  */
- 
-#include <Wire.h>
+
 #include <Accelerometer.h>
+
+#include <Wire.h>
+#include "Com.h"
 
 void accel_measure(int loops = 8, int measure_delay = 15);
 boolean avg_accel_measure(int cylces = 6, int diff = 2);
 Accelerometer accel = Accelerometer(3, 2, 1);
 volatile boolean do_calibrate = false;
+
+Com com;
 
 int borders[] = {90,46,43,26,20,1};
 int pitch[]   = {3,0,3}; //pitch  real, correct, avg
@@ -22,16 +26,16 @@ void button_pressed()
 
 void setup()
 {
-  Wire.begin();
-  attachInterrupt(0, button_pressed, FALLING);
+  com.begin();
+  //attachInterrupt(0, button_pressed, FALLING);
   accel.calibrate();
 }
 
 void calibrate()
 {
-  Wire.beginTransmission(0);
-  Wire.send(254);
-  Wire.endTransmission();
+  com.beginTransmission(0);
+  com.send(254);
+  com.endTransmission();
 
   while(!avg_accel_measure());
   for(int i = 0; i < 6; i++) borders[i] = 0;
@@ -44,9 +48,9 @@ void calibrate()
  
   for(int state = 1; state < 5; state++)
   {
-    Wire.beginTransmission(0);
-    Wire.send(255 - state - 1);
-    Wire.endTransmission();
+    com.beginTransmission(0);
+    com.send(255 - state - 1);
+    com.endTransmission();
 
     int test = get_border(state);
     int test2 = test;
@@ -73,12 +77,13 @@ void loop()
   if(pitch[1] > 80)  pitch[1] = 80;
   if(roll[1] >  80)  roll[1]  = 80;
 
-  Wire.beginTransmission(0);
-  Wire.send(255);
-  Wire.send(pitch[1]);
-  Wire.send(roll[1]);
-  Wire.endTransmission();
-
+  if(Serial.available() > 0 && Serial.read() == 'a' ) {
+    com.beginTransmission(0);
+    com.send(255);
+    com.send(pitch[1]);
+    com.send(roll[1]);
+    com.endTransmission();
+  }
   if(do_calibrate) calibrate();
 }
 
